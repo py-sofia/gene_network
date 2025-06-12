@@ -109,7 +109,7 @@ calculate_mutual_information <- function(probabilities_A, probabilities_B, joint
   H_A <- calculate_entropy(probabilities_A)
   H_B <- calculate_entropy(probabilities_B)
 
-  H_AB <- calculate_joint_entropy(joint_probabilities)
+  H_AB <- calculate_entropy(joint_probabilities)
   
   # calculate mutual information
   MI <- H_A + H_B - H_AB
