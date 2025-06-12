@@ -5,6 +5,7 @@ This project creates a gene networks using R based on the paper "Mutual Informat
 
 ## Next steps
 compare functions to https://search.r-project.org/CRAN/refmans/infotheo/html/mutinformation.html
+--> add bias corrections
 
 ## Requirements
 List any software or R packages someone needs to run your code.
