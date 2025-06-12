@@ -88,6 +88,12 @@ calculate_joint_probabilities <- function(data_A, data_B) {
 
 calculate_entropy <- function(probabilities) {
   
+  if (is.table(probabilities) || is.array(probabilities)) {
+    p_values <- as.numeric(probabilities)
+  } else {
+    p_values <- probabilities
+  }
+
   # calculate entropy
   # Use ifelse to set log2(p) = 0 when p = 0
   entropy <- -sum(probabilities * ifelse(probabilities > 0, log2(probabilities), 0)) 
@@ -95,21 +101,6 @@ calculate_entropy <- function(probabilities) {
   return(entropy)
   
 }
-
-
-
-
-calculate_joint_entropy <- function(joint_probabilities) {
-  
-  # calculate joint entropy
-  # H(A,B) = -∑∑p(a,b)log2(p(a,b))
-  # Use ifelse to set log2(p) = 0 when p = 0
-  H_AB <- -sum(joint_probabilities * ifelse(joint_probabilities > 0, log2(joint_probabilities), 0))
-  
-  return(H_AB)
-  
-}
-
 
 
 
