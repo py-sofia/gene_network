@@ -38,7 +38,7 @@ discretize_data <- function(data, num_bins = NULL) {
 
 
 
-calculate_probabilities <- function(data, num_bins=NULL) {
+calculate_probabilities <- function(data) {
   
   # Consider adding bias corrections for small sample sizes! 
   
@@ -52,7 +52,7 @@ calculate_probabilities <- function(data, num_bins=NULL) {
   freq_table <- table(data)
   n <- sum(freq_table) # total number of observations
   
-  probabilities <- as.numeric(freq_table) / n
+  probabilities <- freq_table / n
 
   return(probabilities)
   
