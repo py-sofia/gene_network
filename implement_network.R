@@ -126,25 +126,33 @@ calculate_mutual_information <- function(probabilities_A, probabilities_B, joint
 #                           main
 ################################################################################
 
-bins = 10
 
 
-mean_value_data <- readr::read_tsv("GSE128816.top.table.tsv")
 single_value_data <- read.csv("GSE128816_Processed_Data_File.csv")
 
 
+# example usage with different bin sizes:
 
+for (bins in 2:5) {
+  
+  # Extracting gene expression data for two genes
+  gene_A_expression <- as.numeric(single_value_data[1, 3:13])
+  gene_B_expression <- as.numeric(single_value_data[2, 3:13])
+  
+  # Discretizing the data
+  discrete_A <- discretize_data(gene_A_expression, num_bins = bins)
+  discrete_B <- discretize_data(gene_B_expression, num_bins = bins)
+  
+  # Calculating probabilities
+  probs_A <- calculate_probabilities(discrete_A)
+  probs_B <- calculate_probabilities(discrete_B)
+  
+  # Calculating joint probabilities
+  joint_probs <- calculate_joint_probabilities(discrete_A, discrete_B)
+  
+  # Calculating mutual information
+  MI <- calculate_mutual_information(probs_A, probs_B, joint_probs)
+  
+  print(paste("Mutual Information for", bins, "bins:", MI))
+}
 
-# example usage:
-gene_A_expression <- as.numeric(single_value_data[1, 3:13])
-gene_B_expression <- as.numeric(single_value_data[2, 3:13])
-
-probs_A <- calculate_probabilities(gene_A_expression, num_bins = bins)
-probs_B <- calculate_probabilities(gene_B_expression, num_bins = bins)
-joint_probs <- calculate_joint_probabilities(gene_A_expression, gene_B_expression, num_bins = bins)
-MI <- calculate_mutual_information(probs_A, probs_B, joint_probs)
-
-
-
-# verifying the result 
-# ...
