@@ -40,28 +40,19 @@ discretize_data <- function(data, num_bins = NULL) {
 
 calculate_probabilities <- function(data, num_bins=NULL) {
   
+  # Consider adding bias corrections for small sample sizes! 
+  
   # Input validation
-  if (length(data) == 0 || !is.numeric(data)) {
-    stop("Data must be a non-empty numeric vector")
-  }
-  if (is.null(num_bins)) {
-    # Sturges' formula
-    num_bins <- nclass.Sturges(data)
-  }
-  if (num_bins <= 0) {
-    stop("num_bins must be positive")
+  if (length(data) == 0 || !is.integer(data)) {
+    stop("Data must be a non-empty integer vector")
   }
 
   
-
-  # create histogram
-  range_data <- range(data)
-  breaks_vec <- seq(range_data[1], range_data[2], length.out = num_bins + 1)
-  hist_result <- hist(data, breaks = breaks_vec, plot = FALSE)
+  # frequency table (counts of each unique value)
+  freq_table <- table(data)
+  n <- sum(freq_table) # total number of observations
   
-  # hist_result$counts = vector with number of values per bin
-  probabilities <- hist_result$counts / sum(hist_result$counts)
-  
+  probabilities <- as.numeric(freq_table) / n
 
   return(probabilities)
   
@@ -85,34 +76,22 @@ calculate_entropy <- function(probabilities) {
 
 
 
-calculate_joint_probabilities <- function(data_A, data_B, num_bins=NULL) {
+calculate_joint_probabilities <- function(data_A, data_B) {
   
   # Input validation
-  if (length(data_A) == 0 || !is.numeric(data_A)) {
-    stop("Data A must be a non-empty numeric vector")
-  }
-  if (length(data_B) == 0 || !is.numeric(data_B)) {
-    stop("Data B must be a non-empty numeric vector")
-  }
   if (length(data_A) != length(data_B)) {
     stop("Data A and B must have the same length")
   }
-  if (is.null(num_bins)) {
-    # Sturges' formula
-    num_bins <- nclass.Sturges(data_A) ## or data_B???
-  }
-  if (num_bins <= 0) {
-    stop("num_bins must be positive")
+  if (!is.integer(data_A) || !is.integer(data_B)) {
+    stop("Data must be discrete integers. Use discretize_data() first.")
   }
 
   
-  
-  # create joint histogram
-  joint_hist <- hist2d(data_A, data_B, nbins = c(num_bins, num_bins), plot = TRUE)
-  
-  # joint probabilities
-  joint_probabilities <- joint_hist$counts / sum(joint_hist$counts)
+  # Create joint frequency table
+  joint_table <- table(data_A, data_B)
+  n <- sum(joint_table)
 
+  joint_probabilities <- joint_table/ n
   
   return(joint_probabilities)
   
