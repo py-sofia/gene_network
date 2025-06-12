@@ -14,6 +14,30 @@ library(gplots)
 
 
 
+discretize_data <- function(data, num_bins = NULL) {
+  
+  # Input validation
+  # add more
+  if (is.null(num_bins)) {
+    num_bins <- nclass.Sturges(data)
+  }
+  
+  # so that all bins have the same width
+  # Use consistent breaks across all variables
+  range_data <- range(data, na.rm = TRUE)
+  breaks <- seq(from=range_data[1], to=range_data[2], length.out = num_bins + 1)
+  
+  # Ensure rightmost bin includes maximum value
+  breaks[length(breaks)] <- breaks[length(breaks)] + .Machine$double.eps # to avoid issues with rightmost bin not including max value
+  discretized <- cut(data, breaks = breaks, include.lowest = TRUE, labels = FALSE)
+  
+  
+  return(discretized)
+}
+
+
+
+
 calculate_probabilities <- function(data, num_bins=NULL) {
   
   # Input validation
