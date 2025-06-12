@@ -62,20 +62,6 @@ calculate_probabilities <- function(data) {
 
 
 
-calculate_entropy <- function(probabilities) {
-  
-  # calculate entropy
-  # Use ifelse to set log2(p) = 0 when p = 0
-  entropy <- -sum(probabilities * ifelse(probabilities > 0, log2(probabilities), 0)) 
-  
-  return(entropy)
-  
-}
-
-
-
-
-
 calculate_joint_probabilities <- function(data_A, data_B) {
   
   # Input validation
@@ -96,6 +82,20 @@ calculate_joint_probabilities <- function(data_A, data_B) {
   return(joint_probabilities)
   
 }
+
+
+
+
+calculate_entropy <- function(probabilities) {
+  
+  # calculate entropy
+  # Use ifelse to set log2(p) = 0 when p = 0
+  entropy <- -sum(probabilities * ifelse(probabilities > 0, log2(probabilities), 0)) 
+  
+  return(entropy)
+  
+}
+
 
 
 
