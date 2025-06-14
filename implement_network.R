@@ -131,17 +131,17 @@ calculate_mutual_information <- function(probabilities_A, probabilities_B, joint
 single_value_data <- read.csv("GSE128816_Processed_Data_File.csv")
 
 
-# example usage with different bin sizes:
+# example MI calculation with different bin sizes:
 
 for (bins in 2:5) {
   
   # Extracting gene expression data for two genes
-  gene_A_expression <- as.numeric(single_value_data[1, 3:13])
-  gene_B_expression <- as.numeric(single_value_data[2, 3:13])
+  expr_A <- as.numeric(single_value_data[1, 3:13])
+  expr_B <- as.numeric(single_value_data[2, 3:13])
   
   # Discretizing the data
-  discrete_A <- discretize_data(gene_A_expression, num_bins = bins)
-  discrete_B <- discretize_data(gene_B_expression, num_bins = bins)
+  discrete_A <- discretize_data(expr_A, num_bins = bins)
+  discrete_B <- discretize_data(expr_B, num_bins = bins)
   
   # Calculating probabilities
   probs_A <- calculate_probabilities(discrete_A)
