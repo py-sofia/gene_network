@@ -156,3 +156,46 @@ for (bins in 2:5) {
   print(paste("Mutual Information for", bins, "bins:", MI))
 }
 
+
+
+
+# example MI calculation for first 11 genes
+
+results <- data.frame(
+  gene1 = character(),
+  gene2 = character(),
+  MI = numeric()
+)
+
+bins = 3
+for (i in 1:10) {
+  for (j in 2:11) {
+  
+    # Extracting gene expression data for two genes
+    expr_A <- as.numeric(single_value_data[i, 3:13])
+    expr_B <- as.numeric(single_value_data[j, 3:13])
+    
+    # Discretizing the data
+    discrete_A <- discretize_data(expr_A, num_bins = bins)
+    discrete_B <- discretize_data(expr_B, num_bins = bins)
+    
+    # Calculating probabilities
+    probs_A <- calculate_probabilities(discrete_A)
+    probs_B <- calculate_probabilities(discrete_B)
+    
+    # Calculating joint probabilities
+    joint_probs <- calculate_joint_probabilities(discrete_A, discrete_B)
+    
+    # Calculating mutual information
+    MI <- calculate_mutual_information(probs_A, probs_B, joint_probs)
+    
+    print(paste("Mutual Information for gene", single_value_data[i, 1], "and", 
+                single_value_data[j, 1], "with", bins, "bins:", MI))
+    
+    results <- rbind(results, data.frame(gene1 = single_value_data[i, 1],
+      gene2 = single_value_data[j, 1], MI = MI))
+  }
+  print("--------------------------------------------------")
+}
+
+write.csv(results, "mutual_information_results.csv", row.names = FALSE)
