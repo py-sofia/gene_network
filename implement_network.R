@@ -167,9 +167,24 @@ results <- data.frame(
   MI = numeric()
 )
 
-bins = 3
-for (i in 1:10) {
-  for (j in 2:11) {
+
+
+
+zero_genes <- which(rowSums(single_value_data[, 3:13]) == 0)
+
+bins <- 3
+
+for (i in 1:400) {
+  
+  if(i %in% zero_genes) {
+    next
+  }
+  
+  for (j in 2:401) {
+    
+    if(j %in% zero_genes) {
+      next
+    }
   
     # Extracting gene expression data for two genes
     expr_A <- as.numeric(single_value_data[i, 3:13])
