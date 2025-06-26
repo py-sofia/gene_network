@@ -128,7 +128,7 @@ calculate_mutual_information <- function(probabilities_A, probabilities_B, joint
 
 
 
-single_value_data <- read.csv("GSE128816_Processed_Data_File.csv")
+single_value_data <- read.csv("GSE128816.csv")
 
 
 # example MI calculation with different bin sizes:
@@ -136,8 +136,8 @@ single_value_data <- read.csv("GSE128816_Processed_Data_File.csv")
 for (bins in 2:5) {
   
   # Extracting gene expression data for two genes
-  expr_A <- as.numeric(single_value_data[1, 3:13])
-  expr_B <- as.numeric(single_value_data[2, 3:13])
+  expr_A <- as.numeric(single_value_data[1, 3:12])
+  expr_B <- as.numeric(single_value_data[2, 3:12])
   
   # Discretizing the data
   discrete_A <- discretize_data(expr_A, num_bins = bins)
@@ -170,7 +170,7 @@ results <- data.frame(
 
 
 
-zero_genes <- which(rowSums(single_value_data[, 3:13]) == 0)
+zero_genes <- which(rowSums(single_value_data[, 3:12]) == 0)
 
 bins <- 3
 
@@ -187,8 +187,8 @@ for (i in 1:400) {
     }
   
     # Extracting gene expression data for two genes
-    expr_A <- as.numeric(single_value_data[i, 3:13])
-    expr_B <- as.numeric(single_value_data[j, 3:13])
+    expr_A <- as.numeric(single_value_data[i, 3:12])
+    expr_B <- as.numeric(single_value_data[j, 3:12])
     
     # Discretizing the data
     discrete_A <- discretize_data(expr_A, num_bins = bins)
