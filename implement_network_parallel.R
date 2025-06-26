@@ -1,4 +1,4 @@
-# Auf der Console ausführen mit:  source("network_ascp.R", echo = FALSE)
+# Auf der Console ausführen mit:  source("network_parallel.R", echo = FALSE)
 
 ################################################################################
 #                           libraries
