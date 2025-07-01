@@ -56,18 +56,31 @@ chunk_size    <- 500000              # 500'000 MI-Werte pro Schreibvorgang
 out_file      <- "mi_results_ascp.csv"
 
 # -------- Daten laden ---------------------------------------------------------
-single_value_data <- read_csv("GSE128816.csv", show_col_types = FALSE)
+single_value_data <- read_csv("GSE128816_test.csv", show_col_types = FALSE)
 sample_cols       <- 3:12
 n_genes     <- nrow(single_value_data)
-zero_genes  <- which(rowSums(single_value_data[, sample_cols]) == 0)
+
+
+# returns vector with indices of genes with zero expression across all samples
+zero_genes  <- which(rowSums(single_value_data[, sample_cols]) == 0) 
+
+# indices of genes with at least some expression
 gene_idx    <- setdiff(seq_len(n_genes), zero_genes)
+
+# total number of gene pairs for MI calculation
 total_pairs <- choose(length(gene_idx), 2)
 
 # -------- Parallel-Cluster ----------------------------------------------------
+
+# select all possible cores minus one for system stability
 n_cores <- max(1, parallel::detectCores() - 1)
+
 cl      <- makeCluster(n_cores, type = "SOCK")
+
+# register the cluster for parallel processing
 registerDoSNOW(cl)
 
+# export variables and functions to the cluster
 clusterExport(
   cl,
   c("single_value_data", "sample_cols", "bins", "gene_idx",
@@ -92,20 +105,25 @@ cat("---------------------\n")
 start_time <- Sys.time()
 last_update_time <- start_time
 last_pairs_done <- 0
-update_interval <- 10000  # Häufigere Updates für kleine Tests
+
+# updates each 10'000 pairs
+update_interval <- 10000  
 
 progress <- function(n_done) {
+  # cumulative number of pairs done
   pairs_done <- cumsum(length(gene_idx) - seq_along(gene_idx))[n_done]
+  
   current_time <- Sys.time()
   
   if (pairs_done - last_pairs_done >= update_interval || pairs_done == total_pairs) {
-    if (pairs_done > 0) {
+    if (pairs_done > 0) { # avoid division by zero at the start
       elapsed_time <- as.numeric(current_time - start_time, units = "secs")
       rate <- pairs_done / elapsed_time
       remaining_pairs <- total_pairs - pairs_done
+      # ETA: estimated time of arrival (task completion)
       eta_seconds <- remaining_pairs / rate  # Zeit bis zum Ende
       
-      # ETA formatieren (Zeit bis zum Ende, nicht Gesamtzeit)
+      # format ETA
       if (eta_seconds > 3600) {
         eta_formatted <- sprintf("%.1fh", eta_seconds / 3600)
       } else if (eta_seconds > 60) {
@@ -114,18 +132,21 @@ progress <- function(n_done) {
         eta_formatted <- sprintf("%.0fs", eta_seconds)
       }
       
+      # calculate percentage of completion
       progress_percent <- 100 * pairs_done / total_pairs
       
       # Erweiterte Anzeige mit ETA und Rate
-      cat(sprintf("\rFortschritt: %.1f%% (%s/%s) | ETA: %s | Rate: %.0f Paare/s", 
+      cat(sprintf("\rprogress: %.1f%% (%s/%s) | ETA: %s | rate: %.0f pairs/s", 
                   progress_percent,
                   format(pairs_done, big.mark = "'"),
                   format(total_pairs, big.mark = "'"),
                   eta_formatted,
                   rate))
+      # avoid buffering
       flush.console()
     }
     
+    # <<- to modify the global variable
     last_update_time <<- current_time
     last_pairs_done <<- pairs_done
   }
@@ -143,18 +164,19 @@ header_written <- FALSE
 total_written <- 0
 buffer_count <- 0
 
-# Buffer-Schreibfunktion
+
 write_buffer <- function(new_data = NULL, force_write = FALSE) {
-  # Neue Daten zum Buffer hinzufügen
+  # add new data to buffer
   if (!is.null(new_data) && nrow(new_data) > 0) {
-    mi_buffer <<- rbind(mi_buffer, new_data)
+    mi_buffer <<- rbind(mi_buffer, new_data) # row-bound append
   }
   
-  # Schreiben wenn Buffer voll oder force_write
+  # write if buffer is full or if force_write = TRUE and there are new rows
   if (nrow(mi_buffer) >= chunk_size || (force_write && nrow(mi_buffer) > 0)) {
+    # count the number of buffer writes
     buffer_count <<- buffer_count + 1
     
-    cat(sprintf("\n[Buffer %d: Schreibe %s MI-Werte...]", 
+    cat(sprintf("\n[buffer %d: write %s MI-values...]", 
                 buffer_count, 
                 format(nrow(mi_buffer), big.mark = "'")))
     
@@ -166,9 +188,9 @@ write_buffer <- function(new_data = NULL, force_write = FALSE) {
     total_written <<- total_written + nrow(mi_buffer)
     header_written <<- TRUE
     
-    cat(sprintf(" ✓ (Gesamt: %s)\n", format(total_written, big.mark = "'")))
+    cat(sprintf("(total: %s)\n", format(total_written, big.mark = "'")))
     
-    # Buffer leeren
+    # clear buffer
     mi_buffer <<- data.frame(gene1 = character(), 
                              gene2 = character(), 
                              MI = numeric(), 
@@ -176,7 +198,9 @@ write_buffer <- function(new_data = NULL, force_write = FALSE) {
   }
 }
 
-# -------- Combine-Funktion für Buffer-Management -----------------------------
+
+# takes data from each parallel core and inputs them to the buffer
+# crucial to combine the parallel workers!
 combine_and_buffer <- function(...) {
   results_list <- list(...)
   
@@ -186,14 +210,13 @@ combine_and_buffer <- function(...) {
     }
   }
   
-  return(NULL)  # Nichts für die nächste Combine-Iteration
+  return(NULL)  # very important, though why?
 }
 
-# -------- Paarweise MI-Berechnung (parallel) ----------------------------------
-cat("Starte MI-Berechnung...\n")
+# -------- pairwise MI-calculation (parallel) ----------------------------------
+cat("start MI calculation...\n")
 
-# KORRIGIERTE foreach-Optionen
-opts <- list(progress = progress)  # Entfernt chunkSize
+opts <- list(progress = progress)
 
 result <- foreach(i = gene_idx,
   .combine = combine_and_buffer,
@@ -220,38 +243,38 @@ result <- foreach(i = gene_idx,
       )
     }
     
-    local_results  # Wird an combine_and_buffer weitergegeben
+    local_results  # implicitly returned to .combine function
   }
 
-# -------- Finaler Buffer-Schreibvorgang --------------------------------------
-cat(sprintf("\n\nSchreibe finalen Buffer (%s MI-Werte)...\n", 
+# write remaining data in buffer to file
+cat(sprintf("\n\nwrite final buffer (%s MI-values)...\n", 
             format(nrow(mi_buffer), big.mark = "'")))
 write_buffer(force_write = TRUE)
 
-# -------- Abschluss -----------------------------------------------------------
+# -------- end -----------------------------------------------------------
 total_elapsed <- as.numeric(Sys.time() - start_time, units = "secs")
-cat(sprintf("\n=== Abgeschlossen ===\n"))
-cat(sprintf("Gesamtzeit: %.1f Minuten\n", total_elapsed / 60))
-cat(sprintf("Buffer-Schreibvorgänge: %d\n", buffer_count))
-cat(sprintf("Geschriebene MI-Werte: %s\n", format(total_written, big.mark = "'")))
+cat(sprintf("\n=== completed ===\n"))
+cat(sprintf("total time: %.1f minutes\n", total_elapsed / 60))
+cat(sprintf("buffer write count: %d\n", buffer_count))
+cat(sprintf("total MI-values: %s\n", format(total_written, big.mark = "'")))
 
 stopCluster(cl)
 
-# -------- Verifikation --------------------------------------------------------
+# -------- verification --------------------------------------------------------
 if (file.exists(out_file)) {
   file_size_mb <- round(file.info(out_file)$size / 1024^2, 1)
-  cat(sprintf("✓ Output-Datei: %s (%.1f MB)\n", out_file, file_size_mb))
+  cat(sprintf("output-file: %s (%.1f MB)\n", out_file, file_size_mb))
   
-  # Erste paar Zeilen zur Kontrolle
+  # first few rows
   sample_data <- fread(out_file, nrows = 3)
-  cat("✓ Beispiel-Daten:\n")
+  cat("example data:\n")
   print(sample_data)
 } else {
-  cat("✗ FEHLER: Output-Datei wurde nicht erstellt!\n")
+  cat("ERROR: Output file was not created!\n")
   
-  # Debug-Information
-  cat("Debug-Info:\n")
-  cat("- Anzahl Gene mit Expression:", length(gene_idx), "\n")
-  cat("- Erwartete Paare:", total_pairs, "\n")
-  cat("- Buffer-Inhalt:", nrow(mi_buffer), "Zeilen\n")
+  # debug information
+  cat("debug info:\n")
+  cat("number of used genes:", length(gene_idx), "\n")
+  cat("expected pairs", total_pairs, "\n")
+  cat("buffer content", nrow(mi_buffer), "Zeilen\n")
 }
