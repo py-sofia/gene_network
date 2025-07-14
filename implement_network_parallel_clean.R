@@ -15,7 +15,13 @@ library(data.table)     # fwrite
 
 # -------- discretization -----------------------------------------------------
 discretize_data <- function(data, num_bins = NULL) {
-  if (is.null(num_bins)) num_bins <- nclass.Sturges(data)
+  # method: equalwidth
+  
+  if (!is.vector(data)) 
+    stop("data must be a vector")
+  if (is.null(num_bins)) 
+    num_bins <- nclass.Sturges(data)
+  
   rng    <- range(data, na.rm = TRUE)
   breaks <- seq(rng[1], rng[2], length.out = num_bins + 1)
   breaks[length(breaks)] <- breaks[length(breaks)] + .Machine$double.eps
