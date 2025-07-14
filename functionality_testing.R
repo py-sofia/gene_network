@@ -72,7 +72,8 @@ library(infotheo)
 data(syn.data) # sample dataset
 # syn.data has samples as rows and genes as columns
 
-syn.data_discr <- discretize(syn.data, disc="equalfreq", nbins=3)
+syn.data_transposed <- t(syn.data)
+syn.data_discr <- discretize(syn.data_transposed, disc="equalwidth", nbins=3)
 
 mim <- minet(syn.data_discr, method = "mrnet", estimator = "mi.empirical")
 
@@ -83,16 +84,13 @@ mim <- minet(syn.data_discr, method = "mrnet", estimator = "mi.empirical")
 source("implement_network_parallel_clean.R")
 
 syn.data_transposed <- t(syn.data)
-# Add gene names as first column
-syn.data_formatted <- data.frame(
-  gene_id = rownames(syn.data_transposed),
-  syn.data_transposed,
-  stringsAsFactors = FALSE
-)
-  
+
+discretized <- as.data.frame(t(apply(syn.data_transposed, 1, discretize_data, num_bins = 3)))
+
+
 run_mi_analysis(
-  data = syn.data_formatted,
-  sample_cols = 2:ncol(syn.data_formatted),
+  data = discretized,
+  sample_cols = 2:ncol(discretized),
   bins = 3,
   chunk_size = 500000,
   out_file = "mi_results_ascp_clean.csv"
