@@ -48,7 +48,7 @@ rownames(expmat) <- names(set) # assign row names
 
 for (i in 1:length(set)) {
   cat(i, "\n")
-  probes <- set[[1]] # get the probe set for the i-th gene
+  probes <- set[[i]] # get the probe set for the i-th gene
   if (length(probes) == 1) { # if there is only one probe for the gene
     expmat[i, ] <- data.probes[probes, ] # assign the expression value of that probe
   } else {
