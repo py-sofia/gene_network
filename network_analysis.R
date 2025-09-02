@@ -136,7 +136,7 @@ library(preprocessCore) ### used by the quantile normalization function
 
 expression_matrix <- read.csv("GSE128816.csv")
 rownames(expression_matrix) <- expression_matrix[, 1]  # Set gene symbols as row names
-anno <- expression_matrix[, 1]
+
 
 expression_matrix <- expression_matrix[, -(1:2)]  # Remove first two columns
 expression_matrix <- as.matrix(expression_matrix)  
@@ -146,8 +146,8 @@ norm_data <- normalize.quantiles(log2(expression_matrix +1)) # +1 to avoid log(0
 dimnames(norm_data) <- list(rownames(expression_matrix), colnames(expression_matrix))
 
 
-datC1 <- expression_matrix[, 1:10]  ### control group
-datC2 <- expression_matrix[, 11:20] ### treatment group
+datC1 <- norm_data[, 1:10]  ### control group
+datC2 <- norm_data[, 11:20] ### treatment group
 
 
 
@@ -163,7 +163,7 @@ beta1=6 #user defined parameter for soft thresholding
 # import from BC3NET
 library(igraph)
 library(bc3net)
-
+library(moduleColor)
 
 net_control <- bc3net(datC1, verbose=TRUE)
 net_test <- bc3net(datC2, verbose=TRUE)
@@ -174,6 +174,15 @@ AdjMatC1 <- as_adjacency_matrix(net_control, attr="weight", sparse=F)
 
 #load("~/Schule/Matura/MA/Modellierung/gene_network/net_test_group.rda")
 AdjMatC2 <- as_adjacency_matrix(net_test, attr="weight", sparse=F)
+
+
+# Extract vertex names
+genesC1 <- V(net_control)$name
+genesC2 <- V(net_test)$name
+
+# Reorder AdjMatC2 to match AdjMatC1
+AdjMatC2 <- AdjMatC2[genesC1, genesC1]
+
 
 
 diag(AdjMatC1)<-0
@@ -194,13 +203,15 @@ plot(geneTreeC1C2, xlab="", sub="", main = "Gene clustering on TOM-based dissimi
 dev.off()
 
 #We now extract modules from the hierarchical tree. This is done using cutreeDynamic. Please refer to WGCNA package documentation for details
-dynamicModsHybridC1C2 = cutreeDynamic(dendro = geneTreeC1C2, distM = dissTOMC1C2,method="hybrid",cutHeight=.996,deepSplit = T, pamRespectsDendro = FALSE,minClusterSize = 20);
+################################################# parameters are critical (esp. cutHeight, minClusterSize)
+dynamicModsHybridC1C2 = cutreeDynamic(dendro = geneTreeC1C2, distM = dissTOMC1C2,method="hybrid",cutHeight=0.999,deepSplit = T, pamRespectsDendro = FALSE,minClusterSize = 5);
 
 #Every module is assigned a color. Note that GREY is reserved for genes which do not belong to any differentially coexpressed module
 dynamicColorsHybridC1C2 = labels2colors(dynamicModsHybridC1C2)
 
 #the next step merges clusters which are close (see WGCNA package documentation)
-mergedColorC1C2<-mergeCloseModules(rbind(datC1,datC2),dynamicColorsHybridC1C2,cutHeight=.2)$color
+################################################# parameters are critical (esp. cutHeight)
+mergedColorC1C2<-mergeCloseModules(t(norm_data),dynamicColorsHybridC1C2,cutHeight=.1)$color
 colorh1C1C2<-mergedColorC1C2
 
 #reassign better colors
@@ -213,16 +224,23 @@ png(file="module_assignment.png",width=1000,height=1000)
 plotDendroAndColors(geneTreeC1C2, colorh1C1C2, "Hybrid Tree Cut",dendroLabels = FALSE, hang = 0.03,addGuide = TRUE, guideHang = 0.05,main = "Gene dendrogram and module colors cells")
 dev.off()
 
+
+# create anno (needed by extractModules())
+gene_symbols <- rownames(expression_matrix)
+anno <- data.frame(gene_symbol = gene_symbols)
+rownames(anno) <- gene_symbols
+
+
 #We write each module to an individual file containing affymetrix probeset IDs
-modulesC1C2Merged<-extractModules(colorh1C1C2,datC1,anno,dir="modules",file_prefix=paste("Output","Specific_module",sep=''),write=T)
+modulesC1C2Merged<-extractModules(colorh1C1C2,t(datC1),anno,dir="modules",file_prefix=paste("Output","Specific_module",sep=''),write=T)
 write.table(colorh1C1C2,file="module_assignment.txt",row.names=F,col.names=F,quote=F)
 
 #We plot to a file the comparative heatmap showing correlation changes in the modules
 #The code for the function plotC1C2Heatmap and others can be found below under the Supporting Functions section
 
-plotC1C2Heatmap(colorh1C1C2,AdjMatC1,AdjMatC2, datC1, datC2)
+plotC1C2Heatmap(colorh1C1C2,AdjMatC1,AdjMatC2, t(datC1), t(datC2))
 png(file="exprChange.png",height=500,width=500)
-plotExprChange(datC1,datC2,colorh1C1C2)
+plotExprChange(t(datC1),t(datC2),colorh1C1C2)
 dev.off()
 
 
