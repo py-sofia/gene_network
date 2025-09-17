@@ -163,10 +163,11 @@ beta1=6 #user defined parameter for soft thresholding
 # import from BC3NET
 library(igraph)
 library(bc3net)
+library(infotheo)
 library(moduleColor)
 
-net_control <- bc3net(datC1, verbose=TRUE)
-net_test <- bc3net(datC2, verbose=TRUE)
+net_control <- bc3net(datC1, verbose=TRUE, estimator="emp")
+net_test <- bc3net(datC2, verbose=TRUE, estimator="emp")
 
 
 #load("~/Schule/Matura/MA/Modellierung/gene_network/net_control_group.rda")
