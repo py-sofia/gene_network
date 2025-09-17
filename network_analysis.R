@@ -149,6 +149,9 @@ dimnames(norm_data) <- list(rownames(expression_matrix), colnames(expression_mat
 datC1 <- norm_data[, 1:10]  ### control group
 datC2 <- norm_data[, 11:20] ### treatment group
 
+t_datC1 <- t(datC1)
+t_datC2 <- t(datC2)
+
 
 
 
@@ -212,7 +215,7 @@ dynamicColorsHybridC1C2 = labels2colors(dynamicModsHybridC1C2)
 
 #the next step merges clusters which are close (see WGCNA package documentation)
 ################################################# parameters are critical (esp. cutHeight)
-mergedColorC1C2<-mergeCloseModules(t(norm_data),dynamicColorsHybridC1C2,cutHeight=.1)$color
+mergedColorC1C2<-mergeCloseModules(rbind(t_datC1, t_datC2),dynamicColorsHybridC1C2,cutHeight=.2)$color
 colorh1C1C2<-mergedColorC1C2
 
 #reassign better colors
@@ -233,15 +236,15 @@ rownames(anno) <- gene_symbols
 
 
 #We write each module to an individual file containing affymetrix probeset IDs
-modulesC1C2Merged<-extractModules(colorh1C1C2,t(datC1),anno,dir="modules",file_prefix=paste("Output","Specific_module",sep=''),write=T)
+modulesC1C2Merged<-extractModules(colorh1C1C2,t_datC1,anno,dir="modules",file_prefix=paste("Output","Specific_module",sep=''),write=T)
 write.table(colorh1C1C2,file="module_assignment.txt",row.names=F,col.names=F,quote=F)
 
 #We plot to a file the comparative heatmap showing correlation changes in the modules
 #The code for the function plotC1C2Heatmap and others can be found below under the Supporting Functions section
 
-plotC1C2Heatmap(colorh1C1C2,AdjMatC1,AdjMatC2, t(datC1), t(datC2))
+plotC1C2Heatmap(colorh1C1C2,AdjMatC1,AdjMatC2, t_datC1, t_datC2)
 png(file="exprChange.png",height=500,width=500)
-plotExprChange(t(datC1),t(datC2),colorh1C1C2)
+plotExprChange(t_datC1,t_datC2,colorh1C1C2)
 dev.off()
 
 
