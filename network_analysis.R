@@ -132,19 +132,21 @@ plotExprChange<-function(datC1,datC2, colorhC1C2,ordering=NULL)
 library(WGCNA) ### used for topological overlap calculation and clustering steps 
 library(RColorBrewer) ### used to create nicer colour palettes 
 library(preprocessCore) ### used by the quantile normalization function
-library(GEOquery)
-library(Biobase)
-
-gse <- getGEO("GSE133426", GSEMatrix = TRUE, AnnotGPL = TRUE)
-expression_matrix <- exprs(gse[[1]])
 
 
-norm_data <- log2(expression_matrix +1) # +1 to avoid log(0) (term: pseudocount)
+expression_matrix <- read.csv("GSE128816.csv")
+rownames(expression_matrix) <- expression_matrix[, 1]  # Set gene symbols as row names
+
+expression_matrix <- expression_matrix[, -(1:2)]  # Remove first two columns
+expression_matrix <- as.matrix(expression_matrix)  
+
+norm_data <- normalize.quantiles(log2(expression_matrix +1)) # +1 to avoid log(0) (term: pseudocount)
 
 dimnames(norm_data) <- list(rownames(expression_matrix), colnames(expression_matrix))
 
-datC1 <- norm_data[, c(2, 4, 6)]  ### control group
-datC2 <- norm_data[, c(1, 3, 5)] ### treatment group
+
+datC1 <- norm_data[, 1:10]  ### control group
+datC2 <- norm_data[, 11:20] ### treatment group
 
 t_datC1 <- t(datC1)
 t_datC2 <- t(datC2)
