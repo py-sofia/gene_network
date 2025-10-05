@@ -22,23 +22,19 @@ library(flashClust)
 library(ComplexHeatmap)
 
 
-expression_matrix <- read.csv("GSE128816.csv")
+expressionMatrix <- read.csv("GSE128816.csv")
 
-rownames(expression_matrix) <- expression_matrix[, 1]  # Set gene symbols as row names
-expression_matrix <- as.matrix(expression_matrix[, 3:ncol(expression_matrix)])  # Remove first two columns
-
-
-norm_data <- normalize.quantiles(log2(expression_matrix +1)) # +1 to avoid log(0) (term: pseudocount)
-
-dimnames(norm_data) <- list(rownames(expression_matrix), colnames(expression_matrix))
+rownames(expressionMatrix) <- expressionMatrix[, 1]  # Set gene symbols as row names
+expressionMatrix <- as.matrix(expressionMatrix[, 3:ncol(expressionMatrix)])  # Remove first two columns
 
 
-datC1 <- norm_data[, 1:10]  ### control group
-datC2 <- norm_data[, 11:20] ### treatment group
+normData <- normalize.quantiles(log2(expressionMatrix +1)) # +1 to avoid log(0) (term: pseudocount)
 
-t_datC1 <- t(datC1)
-t_datC2 <- t(datC2)
+dimnames(normData) <- list(rownames(expressionMatrix), colnames(expressionMatrix))
 
+
+datControl <- normData[, 1:10]  ### control group
+datTreated <- normData[, 11:20] ### treatment group
 
 
 ################################################################################
@@ -48,15 +44,15 @@ t_datC2 <- t(datC2)
 
 
 
-net_control <- bc3net(datC1, verbose=TRUE, estimator ="spearman", boot=100)
-net_test <- bc3net(datC2, verbose=TRUE, estimator="spearman", boot=100)
+netControl <- bc3net(datControl, verbose=TRUE, estimator ="spearman", boot=100)
+netTest <- bc3net(datTreated, verbose=TRUE, estimator="spearman", boot=100)
 
 
-AdjMatC1 <- as_adjacency_matrix(net_control, attr="weight", sparse=F)
-AdjMatC2 <- as_adjacency_matrix(net_test, attr="weight", sparse=F)
+adjMatControl <- as_adjacency_matrix(netControl, attr="weight", sparse=F)
+adjMatTreated <- as_adjacency_matrix(netTest, attr="weight", sparse=F)
 
-genesTreated <- V(net_test)$name # get the names of all the treated genes
-AdjMatC1 <- AdjMatC1[genesTreated, genesTreated] # only keep genes present in treated
+genesTreated <- V(netTest)$name # get the names of all the treated genes
+adjMatControl <- adjMatControl[genesTreated, genesTreated] # only keep genes present in treated
 
 collectGarbage()
 
@@ -64,14 +60,14 @@ collectGarbage()
 beta1=6 #user defined parameter for soft thresholding
 # redo with pickSoftTreshold()
 
-dissTOMC1C2 = TOMdist((abs(AdjMatC1-AdjMatC2)/2)^(beta1/2))
-rownames(dissTOMC1C2) <- rownames(AdjMatC1)
-colnames(dissTOMC1C2) <- rownames(AdjMatC1)
+dissTOM <- TOMdist((abs(adjMatControl-adjMatTreated)/2)^(beta1/2))
+rownames(dissTOM) <- rownames(adjMatControl)
+colnames(dissTOM) <- rownames(adjMatControl)
 collectGarbage()
 
 #Hierarchical clustering is performed using the 
 # Topological Overlap of the adjacency difference as input distance matrix
-geneTreeC1C2 = flashClust(as.dist(dissTOMC1C2), method = "ward");
+geneTree = flashClust(as.dist(dissTOM), method = "ward");
 
 # Plot the resulting clustering tree (dendrogram)
 png(file="hierarchicalTree.png",height=1000,width=1000)
@@ -79,8 +75,8 @@ plot(geneTreeC1C2, xlab="", sub="", main = "Gene clustering on TOM-based dissimi
 dev.off()
 
 #We now extract modules from the hierarchical tree. This is done using cutreeDynamic. Please refer to WGCNA package documentation for details
-dynamicModsHybridC1C2 = cutreeDynamic(dendro = geneTreeC1C2, 
-                                      distM = dissTOMC1C2,
+dynamicModsHybrid = cutreeDynamic(dendro = geneTree, 
+                                      distM = dissTOM,
                                       method="hybrid",
                                       cutHeight=0.999,
                                       deepSplit = T, 
@@ -88,23 +84,23 @@ dynamicModsHybridC1C2 = cutreeDynamic(dendro = geneTreeC1C2,
                                       minClusterSize = 5);
 
 #Every module is assigned a color. Note that GREY is reserved for genes which do not belong to any differentially coexpressed module
-dynamicColorsHybridC1C2 = labels2colors(dynamicModsHybridC1C2)
+dynamicColorsHybrid = labels2colors(dynamicModsHybrid)
 
 #the next step merges clusters which are close (see WGCNA package documentation)
-mergedColorC1C2 <- WGCNA::mergeCloseModules(cbind(t_datC1, t_datC2),
+mergedColor <- WGCNA::mergeCloseModules(t(cbind(datControl, datTreated)),
                                    dynamicColorsHybridC1C2,cutHeight=.2)$color
-colorh1C1C2 <- mergedColorC1C2
+colorh1 <- mergedColor
 
 #reassign better colors
-colorh1C1C2[which(colorh1C1C2 =="midnightblue")]<-"red"
-colorh1C1C2[which(colorh1C1C2 =="lightgreen")]<-"yellow"
-colorh1C1C2[which(colorh1C1C2 =="cyan")]<-"orange"
-colorh1C1C2[which(colorh1C1C2 =="lightcyan")]<-"green"
+colorh1[which(colorh1 =="midnightblue")]<-"red"
+colorh1[which(colorh1 =="lightgreen")]<-"yellow"
+colorh1[which(colorh1 =="cyan")]<-"orange"
+colorh1[which(colorh1 =="lightcyan")]<-"green"
 
 # Plot the dendrogram and colors underneath
 png(file="module_assignment.png",width=1000,height=1000)
-plotDendroAndColors(geneTreeC1C2, 
-                    colorh1C1C2, 
+plotDendroAndColors(geneTree, 
+                    colorh1, 
                     "Hybrid Tree Cut",
                     dendroLabels = FALSE, 
                     hang = 0.03,
@@ -115,19 +111,19 @@ dev.off()
 
 
 # create anno (needed by extractModules())
-gene_symbols <- rownames(expression_matrix)
-anno <- data.frame(gene_symbol = gene_symbols)
-rownames(anno) <- gene_symbols
+geneSymbols <- rownames(expressionMatrix)
+anno <- data.frame(gene_symbol = geneSymbols)
+rownames(anno) <- geneSymbols
 
 
 #We write each module to an individual file containing affymetrix probeset IDs
-modulesC1C2Merged <- extractModules(colorh1C1C2$colors,
-                                    t_datC1,
+modulesMerged <- extractModules(colorh1$colors,
+                                    t(datControl),
                                     anno,
                                     dir="modules",
                                     file_prefix=paste("Output","Specific_module",sep=''),
                                     write=T)
-write.table(colorh1C1C2,
+write.table(colorh1,
             file="module_assignment.txt",
             row.names=F,col.names=F,
             quote=F)
