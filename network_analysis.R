@@ -19,13 +19,14 @@ library(bc3net)
 library(infotheo)
 library(moduleColor)
 library(flashClust)
+library(ComplexHeatmap)
 
 
 expression_matrix <- read.csv("GSE128816.csv")
-rownames(expression_matrix) <- expression_matrix[, 1]  # Set gene symbols as row names
 
-expression_matrix <- expression_matrix[, -(1:2)]  # Remove first two columns
-expression_matrix <- as.matrix(expression_matrix)  
+rownames(expression_matrix) <- expression_matrix[, 1]  # Set gene symbols as row names
+expression_matrix <- as.matrix(expression_matrix[, 3:ncol(expression_matrix)])  # Remove first two columns
+
 
 norm_data <- normalize.quantiles(log2(expression_matrix +1)) # +1 to avoid log(0) (term: pseudocount)
 
@@ -47,61 +48,69 @@ t_datC2 <- t(datC2)
 
 
 
-net_control <- bc3net(datC1, verbose=TRUE, boot=10)
-net_test <- bc3net(datC2, verbose=TRUE, estimator="emp")
+net_control <- bc3net(datC1, verbose=TRUE, estimator ="spearman", boot=100)
+net_test <- bc3net(datC2, verbose=TRUE, estimator="spearman", boot=100)
 
 
-#load("~/Schule/Matura/MA/Modellierung/gene_network/net_control_group.rda")
 AdjMatC1 <- as_adjacency_matrix(net_control, attr="weight", sparse=F)
-
-#load("~/Schule/Matura/MA/Modellierung/gene_network/net_test_group.rda")
 AdjMatC2 <- as_adjacency_matrix(net_test, attr="weight", sparse=F)
 
 genesTreated <- V(net_test)$name # get the names of all the treated genes
 AdjMatC1 <- AdjMatC1[genesTreated, genesTreated] # only keep genes present in treated
 
-diag(AdjMatC1)<-0
-diag(AdjMatC2)<-0
 collectGarbage()
 
 
 beta1=6 #user defined parameter for soft thresholding
 # redo with pickSoftTreshold()
 
-dissTOMC1C2=TOMdist((abs(AdjMatC1-AdjMatC2)/2)^(beta1/2))
+dissTOMC1C2 = TOMdist((abs(AdjMatC1-AdjMatC2)/2)^(beta1/2))
 rownames(dissTOMC1C2) <- rownames(AdjMatC1)
 colnames(dissTOMC1C2) <- rownames(AdjMatC1)
 collectGarbage()
 
 #Hierarchical clustering is performed using the 
 # Topological Overlap of the adjacency difference as input distance matrix
-geneTreeC1C2 = flashClust(as.dist(dissTOMC1C2), method = "average");
+geneTreeC1C2 = flashClust(as.dist(dissTOMC1C2), method = "ward");
 
 # Plot the resulting clustering tree (dendrogram)
 png(file="hierarchicalTree.png",height=1000,width=1000)
-plot(geneTreeC1C2, xlab="", sub="", main = "Gene clustering on TOM-based dissimilarity",labels = FALSE, hang = 0.04);
+plot(geneTreeC1C2, xlab="", sub="", main = "Gene clustering on TOM-based dissimilarity",labels=F, hang = 0.04);
 dev.off()
 
 #We now extract modules from the hierarchical tree. This is done using cutreeDynamic. Please refer to WGCNA package documentation for details
-################################################# parameters are critical (esp. cutHeight, minClusterSize)
-dynamicModsHybridC1C2 = cutreeDynamic(dendro = geneTreeC1C2, distM = dissTOMC1C2,method="hybrid",cutHeight=0.999,deepSplit = T, pamRespectsDendro = FALSE,minClusterSize = 5);
+dynamicModsHybridC1C2 = cutreeDynamic(dendro = geneTreeC1C2, 
+                                      distM = dissTOMC1C2,
+                                      method="hybrid",
+                                      cutHeight=0.999,
+                                      deepSplit = T, 
+                                      pamRespectsDendro = FALSE,
+                                      minClusterSize = 5);
 
 #Every module is assigned a color. Note that GREY is reserved for genes which do not belong to any differentially coexpressed module
 dynamicColorsHybridC1C2 = labels2colors(dynamicModsHybridC1C2)
 
 #the next step merges clusters which are close (see WGCNA package documentation)
-################################################# parameters are critical (esp. cutHeight)
-mergedColorC1C2<-mergeCloseModules(rbind(t_datC1, t_datC2),dynamicColorsHybridC1C2,cutHeight=.2)$color
-colorh1C1C2<-mergedColorC1C2
+mergedColorC1C2 <- WGCNA::mergeCloseModules(cbind(t_datC1, t_datC2),
+                                   dynamicColorsHybridC1C2,cutHeight=.2)$color
+colorh1C1C2 <- mergedColorC1C2
 
 #reassign better colors
 colorh1C1C2[which(colorh1C1C2 =="midnightblue")]<-"red"
 colorh1C1C2[which(colorh1C1C2 =="lightgreen")]<-"yellow"
 colorh1C1C2[which(colorh1C1C2 =="cyan")]<-"orange"
 colorh1C1C2[which(colorh1C1C2 =="lightcyan")]<-"green"
+
 # Plot the dendrogram and colors underneath
 png(file="module_assignment.png",width=1000,height=1000)
-plotDendroAndColors(geneTreeC1C2, colorh1C1C2, "Hybrid Tree Cut",dendroLabels = FALSE, hang = 0.03,addGuide = TRUE, guideHang = 0.05,main = "Gene dendrogram and module colors cells")
+plotDendroAndColors(geneTreeC1C2, 
+                    colorh1C1C2, 
+                    "Hybrid Tree Cut",
+                    dendroLabels = FALSE, 
+                    hang = 0.03,
+                    addGuide = TRUE, 
+                    guideHang = 0.05,
+                    main = "Gene dendrogram and module colors cells")
 dev.off()
 
 
@@ -112,16 +121,19 @@ rownames(anno) <- gene_symbols
 
 
 #We write each module to an individual file containing affymetrix probeset IDs
-modulesC1C2Merged<-extractModules(colorh1C1C2$colors,t_datC1,anno,dir="modules",file_prefix=paste("Output","Specific_module",sep=''),write=T)
-write.table(colorh1C1C2,file="module_assignment.txt",row.names=F,col.names=F,quote=F)
+modulesC1C2Merged <- extractModules(colorh1C1C2$colors,
+                                    t_datC1,
+                                    anno,
+                                    dir="modules",
+                                    file_prefix=paste("Output","Specific_module",sep=''),
+                                    write=T)
+write.table(colorh1C1C2,
+            file="module_assignment.txt",
+            row.names=F,col.names=F,
+            quote=F)
 
 #We plot to a file the comparative heatmap showing correlation changes in the modules
-#The code for the function plotC1C2Heatmap and others can be found below under the Supporting Functions section
 
-plotC1C2Heatmap(colorh1C1C2,AdjMatC1,AdjMatC2, t_datC1, t_datC2)
-png(file="exprChange.png",height=500,width=500)
-plotExprChange(t_datC1,t_datC2,colorh1C1C2)
-dev.off()
 
 
 ################################################################################
