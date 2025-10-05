@@ -132,6 +132,11 @@ plotExprChange<-function(datC1,datC2, colorhC1C2,ordering=NULL)
 library(WGCNA) ### used for topological overlap calculation and clustering steps 
 library(RColorBrewer) ### used to create nicer colour palettes 
 library(preprocessCore) ### used by the quantile normalization function
+library(igraph)
+library(bc3net)
+library(infotheo)
+library(moduleColor)
+library(flashClust)
 
 
 expression_matrix <- read.csv("GSE128816.csv")
@@ -157,17 +162,10 @@ t_datC2 <- t(datC2)
 #                             applying DiffCoEx
 ################################################################################
 
-beta1=6 #user defined parameter for soft thresholding
 
-# redo with pickSoftTreshold()
 
-# import from BC3NET
-library(igraph)
-library(bc3net)
-library(infotheo)
-library(moduleColor)
 
-net_control <- bc3net(datC1, verbose=TRUE, estimator="emp")
+net_control <- bc3net(datC1, verbose=TRUE, boot=10)
 net_test <- bc3net(datC2, verbose=TRUE, estimator="emp")
 
 
@@ -177,26 +175,24 @@ AdjMatC1 <- as_adjacency_matrix(net_control, attr="weight", sparse=F)
 #load("~/Schule/Matura/MA/Modellierung/gene_network/net_test_group.rda")
 AdjMatC2 <- as_adjacency_matrix(net_test, attr="weight", sparse=F)
 
-
-# Extract vertex names
-genesC1 <- V(net_control)$name
-genesC2 <- V(net_test)$name
-
-# Reorder AdjMatC2 to match AdjMatC1
-AdjMatC2 <- AdjMatC2[genesC1, genesC1]
-
-
+genesTreated <- V(net_test)$name # get the names of all the treated genes
+AdjMatC1 <- AdjMatC1[genesTreated, genesTreated] # only keep genes present in treated
 
 diag(AdjMatC1)<-0
 diag(AdjMatC2)<-0
 collectGarbage()
 
+
+beta1=6 #user defined parameter for soft thresholding
+# redo with pickSoftTreshold()
+
 dissTOMC1C2=TOMdist((abs(AdjMatC1-AdjMatC2)/2)^(beta1/2))
+rownames(dissTOMC1C2) <- rownames(AdjMatC1)
+colnames(dissTOMC1C2) <- rownames(AdjMatC1)
 collectGarbage()
 
 #Hierarchical clustering is performed using the 
 # Topological Overlap of the adjacency difference as input distance matrix
-library(flashClust)
 geneTreeC1C2 = flashClust(as.dist(dissTOMC1C2), method = "average");
 
 # Plot the resulting clustering tree (dendrogram)
@@ -234,7 +230,7 @@ rownames(anno) <- gene_symbols
 
 
 #We write each module to an individual file containing affymetrix probeset IDs
-modulesC1C2Merged<-extractModules(colorh1C1C2,t_datC1,anno,dir="modules",file_prefix=paste("Output","Specific_module",sep=''),write=T)
+modulesC1C2Merged<-extractModules(colorh1C1C2$colors,t_datC1,anno,dir="modules",file_prefix=paste("Output","Specific_module",sep=''),write=T)
 write.table(colorh1C1C2,file="module_assignment.txt",row.names=F,col.names=F,quote=F)
 
 #We plot to a file the comparative heatmap showing correlation changes in the modules
