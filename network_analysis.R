@@ -20,6 +20,9 @@ library(infotheo)
 library(moduleColor)
 library(flashClust)
 library(ComplexHeatmap)
+library(scales)
+library(ggplot2)
+library(dplyr)
 
 
 expressionMatrix <- read.csv("GSE128816.csv")
@@ -37,15 +40,22 @@ datControl <- normData[, 1:10]  ### control group
 datTreated <- normData[, 11:20] ### treatment group
 
 
+
+
+
+
 ################################################################################
-#                             applying DiffCoEx
+#                             applying DiffCoEx (part 1)
 ################################################################################
 
 
 
-
-netControl <- bc3net(datControl, verbose=TRUE, estimator ="spearman", boot=100)
+netControl <- bc3net(datControl, verbose=TRUE, estimator="spearman", boot=100)
 netTest <- bc3net(datTreated, verbose=TRUE, estimator="spearman", boot=100)
+# ca. 24h to run 
+
+save(netControl, file = "netControl.RData")
+save(netTest, file = "netTest.RData")
 
 
 adjMatControl <- as_adjacency_matrix(netControl, attr="weight", sparse=F)
@@ -56,11 +66,45 @@ adjMatControl <- adjMatControl[genesTreated, genesTreated] # only keep genes pre
 
 collectGarbage()
 
+################################################################################
+#                             pickSoftThreshold()
+################################################################################
 
-beta1=6 #user defined parameter for soft thresholding
-# redo with pickSoftTreshold()
 
-dissTOM <- TOMdist((abs(adjMatControl-adjMatTreated)/2)^(beta1/2))
+#enableWGCNAThreads(nThreads = 4)
+
+AdjDiff <- abs(adjMatControl-adjMatTreated)/2
+diag(AdjDiff) <- 1
+
+
+powers <- c(seq(1,10,1), seq(12,20,2))
+
+sft = pickSoftThreshold.fromSimilarity(
+  similarity = AdjDiff,
+  powerVector = powers,
+  RsquaredCut = 0.85,
+  moreNetworkConcepts = TRUE,
+  verbose = 5);
+
+beta1 <- sft$powerEstimate # optimal beta1
+
+head(sft$fitIndices)
+
+plot(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2],
+     xlab="Soft Threshold (power)", ylab="Scale Free Topology Model Fit, signed R^2",
+     type="n", main="Scale independence")
+text(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2],
+     labels=powers, cex=0.9, col="red")
+abline(h=0.85, col="red")
+
+
+
+################################################################################
+#                             applying DiffCoEx (part 2)
+################################################################################
+
+
+dissTOM <- TOMdist((AdjDiff)^(beta1/2))
 rownames(dissTOM) <- rownames(adjMatControl)
 colnames(dissTOM) <- rownames(adjMatControl)
 collectGarbage()
@@ -70,8 +114,8 @@ collectGarbage()
 geneTree = flashClust(as.dist(dissTOM), method = "ward");
 
 # Plot the resulting clustering tree (dendrogram)
-png(file="hierarchicalTree.png",height=1000,width=1000)
-plot(geneTreeC1C2, xlab="", sub="", main = "Gene clustering on TOM-based dissimilarity",labels=F, hang = 0.04);
+png(file="hierarchicalTree.png",height=1000,width=3000)
+plot(geneTree, xlab="", sub="", main = "Gene clustering on TOM-based dissimilarity",labels=F, hang = 0.04);
 dev.off()
 
 #We now extract modules from the hierarchical tree. This is done using cutreeDynamic. Please refer to WGCNA package documentation for details
@@ -88,7 +132,7 @@ dynamicColorsHybrid = labels2colors(dynamicModsHybrid)
 
 #the next step merges clusters which are close (see WGCNA package documentation)
 mergedColor <- WGCNA::mergeCloseModules(t(cbind(datControl, datTreated)),
-                                   dynamicColorsHybridC1C2,cutHeight=.2)$color
+                                   dynamicColorsHybrid,cutHeight=.2)$color
 colorh1 <- mergedColor
 
 #reassign better colors
@@ -98,7 +142,7 @@ colorh1[which(colorh1 =="cyan")]<-"orange"
 colorh1[which(colorh1 =="lightcyan")]<-"green"
 
 # Plot the dendrogram and colors underneath
-png(file="module_assignment.png",width=1000,height=1000)
+png(file="module_assignment.png",width=4000,height=1000)
 plotDendroAndColors(geneTree, 
                     colorh1, 
                     "Hybrid Tree Cut",
@@ -117,12 +161,13 @@ rownames(anno) <- geneSymbols
 
 
 #We write each module to an individual file containing affymetrix probeset IDs
-modulesMerged <- extractModules(colorh1$colors,
+modulesMerged <- extractModules(colorh1,
                                     t(datControl),
                                     anno,
                                     dir="modules",
                                     file_prefix=paste("Output","Specific_module",sep=''),
                                     write=T)
+
 write.table(colorh1,
             file="module_assignment.txt",
             row.names=F,col.names=F,
@@ -132,9 +177,11 @@ write.table(colorh1,
 
 
 
+
 ################################################################################
 #                               functions 
 ################################################################################
+
 
 # uses module assignment list as input
 # writes individual files witht he probeset ids for each module
