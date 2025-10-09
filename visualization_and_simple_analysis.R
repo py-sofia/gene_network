@@ -101,6 +101,7 @@ diameter(netControl, directed=F) #               -> 1.73
 degTest <- degree(netTest, mode = "all")
 degControl <- degree(netControl, mode = "all")
 
+
 # Combine into dataframe
 df_deg <- data.frame(
   degree = c(degTest, degControl),
@@ -129,4 +130,30 @@ ggplot(df_deg, aes(x = degree, fill = group)) +
   ) +
   scale_fill_manual(values = c("skyblue", "tomato")) +
   scale_color_manual(values = c("skyblue", "tomato"))
+
+
+############################### degree distribution ############################
+
+maxDeg <- 40
+
+degControl.dist <- degree_distribution(netControl, cumulative=T, mode="all")
+degTest.dist <- degree_distribution(netTest, cumulative=T, mode="all")
+
+pdf("degree_distribution.pdf", width = 6, height = 4)
+plot(x=0:maxDeg, y=1-degControl.dist[0:maxDeg+1], pch=19, cex=1.2, 
+     col="skyblue", xlim=c(0, maxDeg), 
+     xlab="Degree", ylab="Cumulative Frequency")
+points(x=0:maxDeg, y=1-degTest.dist[0:maxDeg+1], pch=19, cex=1.2, col="tomato")
+legend("bottomright", legend = c("Control", "Test"), col = c("skyblue", "tomato"), 
+       pch = 19, inset=c(0, 0))
+dev.off()
+
+
+
+################################### centrality #################################
+
+
+
+
+
 
