@@ -71,11 +71,8 @@ collectGarbage()
 ################################################################################
 
 
-#enableWGCNAThreads(nThreads = 4)
-
 AdjDiff <- abs(adjMatControl-adjMatTreated)/2
 diag(AdjDiff) <- 1
-
 
 powers <- c(seq(1,10,1), seq(12,20,2))
 
@@ -87,6 +84,7 @@ sft = pickSoftThreshold.fromSimilarity(
   verbose = 5);
 
 beta1 <- sft$powerEstimate # optimal beta1
+beta1 <- 3
 
 head(sft$fitIndices)
 
