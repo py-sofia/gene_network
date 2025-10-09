@@ -152,8 +152,9 @@ dev.off()
 
 ################################### centrality #################################
 
-
-
+# degree
+centrControl <- centr_degree(netControl, mode="all", normalized=T)
+centrTest <- centr_degree(netTest, mode="all", normalized=T)
 
 
 
