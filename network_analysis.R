@@ -171,7 +171,26 @@ write.table(colorh1,
             row.names=F,col.names=F,
             quote=F)
 
-#We plot to a file the comparative heatmap showing correlation changes in the modules
 
 
+################################################################################
+#                             comparative heatmap
+################################################################################
+
+library(magick)
+library(circlize)
+
+col_fun <- colorRamp2(c(0, 0.5, 1), c("blue", "white", "red"))
+
+pdf("AdjDiff_heatmap.pdf", width = 8, height = 8)
+Heatmap(AdjDiff[1:2000, 1:2000], col=col_fun,
+        show_row_dend=F,
+        show_column_dend=F,
+        show_row_names=F,
+        show_column_names=F,
+        cluster_rows=T,
+        cluster_columns=T,
+        use_raster=T,
+        raster_quality=1)
+dev.off()
 
