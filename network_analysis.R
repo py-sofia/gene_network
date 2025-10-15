@@ -120,7 +120,7 @@ dev.off()
 dynamicModsHybrid = cutreeDynamic(dendro = geneTree, 
                                       distM = dissTOM,
                                       method="hybrid",
-                                      cutHeight=0.999,
+                                      cutHeight=0.96,
                                       deepSplit = T, 
                                       pamRespectsDendro = FALSE,
                                       minClusterSize = 5);
