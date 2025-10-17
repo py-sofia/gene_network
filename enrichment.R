@@ -7,7 +7,7 @@ library(enrichplot)
 
 ################################################################################
 
-
+# Convert gene symbols to Entrez IDs for each module
 modulesMergedEntrez <- lapply(modulesMerged, function(gene_set) {
   result <- bitr(gene_set,
                  fromType="SYMBOL",
