@@ -18,11 +18,6 @@ modulesMergedEntrez <- lapply(modulesMerged, function(gene_set) {
 
 
 
-universe <- bitr(geneSymbols,
-                 fromType="SYMBOL",
-                 toType="ENTREZID",
-                 OrgDb = org.Hs.eg.db)
-
 ################################################################################
 
 
@@ -64,10 +59,7 @@ enrichmentResults_ontBP <- lapply(modulesMergedEntrez, function(gene_set) {
     ont = "BP",
     pAdjustMethod = "bonferroni",
     readable = TRUE,
-    pvalueCutoff = 0.05,
-    qvalueCutoff = 1,
-    universe = universe
-  )
+    pvalueCutoff = 0.05)
 })
 
 
@@ -86,7 +78,8 @@ lapply(names(enrichmentResults_ontBP), function(module_name) {
 lapply(names(enrichmentResults_ontBP), function(module_name) {
   enrich_result <- enrichmentResults_ontBP[[module_name]]
   if (nrow(as.data.frame(enrich_result)) > 0) {  # only plot if non-empty
-    print(emapplot(pairwise_termsim(enrich_result)))
+    #print(emapplot(pairwise_termsim(enrich_result)))
+    barplot(enrich_result, showCategory = 20, title = module_name)
     Sys.sleep(5)
   } else {
     message(paste("No enrichment results for module:", module_name))
