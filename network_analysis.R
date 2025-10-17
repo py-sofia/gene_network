@@ -83,7 +83,7 @@ sft = pickSoftThreshold.fromSimilarity(
   moreNetworkConcepts = TRUE,
   verbose = 5);
 
-beta1 <- sft$powerEstimate # optimal beta1
+beta1 <- sft$powerEstimate # optimal beta1, but NA
 beta1 <- 3
 
 head(sft$fitIndices)
